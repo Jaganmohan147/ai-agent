@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SmartInternz Challan System</title>
+<style>
+body{font-family:Arial;background:#eef1f5;padding:20px}
+.page{display:none}
+.active{display:block}
+.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 6px #999;max-width:900px;margin:auto}
+button{padding:10px 16px;background:#007bff;color:#fff;border:0;border-radius:6px;cursor:pointer}
+input,select{width:100%;padding:10px;margin:8px 0}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#eee}
+.challan-card{border:4px solid #1a73e8;padding:20px;background:#fff;width:794px;margin:auto}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="page active">
+  <div class="card">
+    <h2>Admin Login</h2>
+    <input id="admin_id" value="admin">
+    <input id="admin_pass" type="password" value="1234">
+    <button onclick="login()">Login</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin" class="page">
+  <div class="card">
+    <h2>Admin Panel</h2>
+    <button onclick="show('form')">Open Challan Form</button>
+    <button onclick="loadData()">Refresh Data</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Project</th>
+          <th>Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="data"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FORM -->
+<div id="form" class="page">
+  <div class="card">
+    <h2>Challan Form</h2>
+
+    <select id="degree" onchange="loadCourses()">
+      <option value="">Select Degree</option>
+      <option>BSc</option>
+      <option>BCom</option>
+    </select>
+
+    <select id="course"></select>
+
+    <select id="team_size" onchange="generateMembers()">
+      <option value="">Team Size</option>
+      <option>1</option><option>2</option><option>3</option>
+      <option>4</option><option>5</option><option>6</option>
+    </select>
+
+    <div id="members_box"></div>
+
+    <input id="project" placeholder="Project Name">
+    <input id="instructor" placeholder="Instructor Name">
+
+    <button onclick="generateChallan()">Generate Challan + Auto PDF</button>
+    <button onclick="show('admin')">Back</button>
+  </div>
+</div>
+
+<!-- CHALLAN -->
+<div id="challan" class="page">
+  <div class="challan-card" id="challanCard">
+    <h2 style="text-align:center">SMARTINTERNZ SKILL WALLET CHALLAN</h2>
+    <div id="challan_content"></div>
+
+    <h3>Terms & Conditions</h3>
+    <ol>
+      <li>No Refund</li>
+      <li>Correct Data Must</li>
+      <li>ID Must Match</li>
+      <li>Instructor Approval</li>
+      <li>QR Valid</li>
+      <li>One Time Fee</li>
+      <li>No Late Submissions</li>
+      <li>Team Responsible</li>
+      <li>Authority Decision Final</li>
+      <li>Valid 7 Days</li>
+    </ol>
+
+    <p>Team Leader Sign: __________ Instructor Sign: __________</p>
+
+    <button onclick="downloadPDF()">Download PDF Again</button>
+    <button onclick="show('admin')">Back to Admin</button>
+  </div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function login(){
+  if(admin_id.value=='admin' && admin_pass.value=='1234'){
+    show('admin');
+    loadData();
+  } else alert('Wrong Login');
+}
+
+function loadCourses(){
+  course.innerHTML='';
+  if(degree.value=='BSc'){
+    ['Electronics','Physics','IoT','Computer Science'].forEach(c=>{
+      let o=document.createElement('option');o.text=c;course.add(o)
+    });
+  } else {
+    let o=document.createElement('option');o.text='Computer Applications';course.add(o)
+  }
+}
+
+function generateMembers(){
+  members_box.innerHTML='';
+  for(let i=1;i<=team_size.value;i++){
+    members_box.innerHTML+=`<input class="m" placeholder="Member ${i}">`;
+  }
+}
+
+function generateChallan(){
+  let members=[...document.querySelectorAll('.m')].map(i=>i.value);
+  let total=members.length*1000;
+  let id='CH'+Date.now();
+
+  challan_content.innerHTML=`
+  <b>ID:</b>${id}<br>
+  <b>Degree:</b>${degree.value}<br>
+  <b>Course:</b>${course.value}<br>
+  <b>Project:</b>${project.value}<br>
+  <b>Instructor:</b>${instructor.value}<br>
+  <b>Members:</b>${members.join(',')}<br>
+  <b>Total:</b>₹${total}<br>
+  <b>Account:</b> 007605500462
+  `;
+
+  let db=JSON.parse(localStorage.getItem('si')||'[]');
+  db.push({id,project:project.value,total});
+  localStorage.setItem('si',JSON.stringify(db));
+
+  show('challan');
+
+  // ✅ AUTO PDF DOWNLOAD AFTER GENERATION
+  setTimeout(downloadPDF, 800);
+}
+
+function loadData(){
+  let db=JSON.parse(localStorage.getItem('si')||'[]');
+  let html='';
+  db.forEach((r,i)=>{
+    html+=`
+    <tr>
+      <td>${r.id}</td>
+      <td>${r.project}</td>
+      <td>${r.total}</td>
+      <td>
+        <button onclick="view(${i})">View</button>
+        <button onclick="del(${i})" style="background:red">Delete</button>
+      </td>
+    </tr>`;
+  });
+  data.innerHTML=html;
+}
+
+function view(i){
+  let db=JSON.parse(localStorage.getItem('si'));
+  let r=db[i];
+  challan_content.innerHTML=`ID:${r.id}<br>Project:${r.project}<br>Total:${r.total}`;
+  show('challan');
+}
+
+function del(i){
+  let db=JSON.parse(localStorage.getItem('si'));
+  db.splice(i,1);
+  localStorage.setItem('si',JSON.stringify(db));
+  loadData();
+}
+
+// ✅ REAL PDF DOWNLOAD
+function downloadPDF(){
+  const challan=document.getElementById('challanCard');
+  const w=window.open('');
+  w.document.write(`
+  <html><head><title>Challan PDF</title></head>
+  <body>${challan.outerHTML}
+  <script>window.onload=function(){window.print()}<\/script>
+  </body></html>
+  `);
+  w.document.close();
+}
+</script>
+
+</body>
+</html>
